@@ -1,0 +1,437 @@
+use KASETY_504_09
+
+
+drop TABLE komunikatywyzwalaczy
+
+CREATE table komunikatywyzwalaczy( 
+IDW INT IDENTITY,
+TABELA CHAR(30),
+KOLUMNA CHAR(30),
+OPERACJA CHAR(30),
+STARA_WART CHAR(50),
+NOWA_WART CHAR (50),
+CZAS SMALLDATETIME DEFAULT(GETDATE()),
+UZYTKOWNIK CHAR (20) DEFAULT(USER)
+)
+GO
+ 
+IF OBJECT_ID ('POAKTUALICACJI_RODZAJ','TR') IS NOT NULL 
+begin
+print'triger POAKTUALICACJI_RODZAJ istnieje'
+END
+ELSE
+BEGIN 
+print 'tworze trigger zmiana statusu'
+END
+GO
+CREATE TRIGGER POAKTUALICACJI_RODZAJ
+ON RODZAJ 
+AFTER UPDATE 
+AS
+INSERT INTO komunikatywyzwalaczy( TABELA, KOLUMNA, OPERACJA, STARA_WART, NOWA_WART)
+VALUES ('RODZAJ', 'dowolna', 'UPDATE', 'Stary rodzaj', 'Nowy rodzaj' )
+GO 
+
+
+DROP TRIGGER POAKTUALICACJI_RODZAJ
+GO
+
+SELECT * FROM komunikatywyzwalaczy
+GO
+
+IF OBJECT_ID ('FUNKCJE_UPDATE_KLIENCI','TR') IS NOT NULL 
+begin
+print'triger FUNKCJE_UPDATE_KLIENCI istnieje'
+END
+ELSE
+BEGIN 
+print 'tworze trigger zmiana statusu'
+END
+GO
+CREATE TRIGGER FUNKCJE_UPDATE_KLIENCI
+ON KLIENCI
+AFTER UPDATE 
+AS 
+IF UPDATE (NAZWISKO)
+INSERT INTO komunikatywyzwalaczy (TABELA, KOLUMNA, OPERACJA, STARA_WART, NOWA_WART)
+VALUES ('KLIENCI', 'Nazwisko', 'UPDATE', 'Stare Nazwisko', 'Nowe nazwisko')
+IF UPDATE (IMIE)
+INSERT INTO komunikatywyzwalaczy (TABELA, KOLUMNA, OPERACJA, STARA_WART, NOWA_WART)
+VALUES ('KLIENCI', 'Imie', 'UPDATE', 'Stare imie', 'Nowe imie')
+go 
+
+
+SELECT * FROM komunikatywyzwalaczy
+GO
+
+DROP TRIGGER FUNKCJE_UPDATE_KLIENCI
+GO
+
+
+IF OBJECT_ID ('PO_AKT_KRAJ','TR') IS NOT NULL 
+begin
+print'triger PO_AKT_KRAJ istnieje'
+END
+ELSE
+BEGIN 
+print 'tworze trigger zmiana statusu'
+END
+GO
+CREATE TRIGGER PO_AKT_KRAJ
+ON KRAJ
+AFTER UPDATE
+AS
+IF UPDATE(KRAJPROD)
+ DECLARE @kraj_OLD VARCHAR(15), @kraj_NEW VARCHAR(15)
+ SELECT @kraj_OLD=krajprod
+ FROM deleted 
+ SELECT @kraj_NEW=krajprod
+ FROM inserted 
+ INSERT INTO komunikatywyzwalaczy (TABELA, KOLUMNA, OPERACJA, STARA_WART, NOWA_WART)
+ VALUES ('KRAJ', 'KRAJPROD', 'UPDATE', @kraj_OLD, @kraj_NEW)
+ GO
+
+
+SELECT * FROM komunikatywyzwalaczy
+GO
+
+
+DROP TRIGGER PO_AKT_KRAJ
+GO
+
+
+IF OBJECT_ID ('PO_WSTAW_KRAJ','TR') IS NOT NULL 
+begin
+print'triger PO_WSTAW_KRAJ istnieje'
+END
+ELSE
+BEGIN 
+print 'tworze trigger zmiana statusu'
+END
+GO
+CREATE TRIGGER PO_WSTAW_KRAJ
+ON KRAJ 
+AFTER INSERT
+AS 
+IF UPDATE(KRAJPROD)
+DECLARE @kraj_NEW VARCHAR(15)
+SELECT @kraj_NEW=krajprod
+FROM inserted 
+INSERT INTO komunikatywyzwalaczy (TABELA, KOLUMNA, OPERACJA, STARA_WART, NOWA_WART)
+VALUES ('KRAJ', 'KRAJPROD', 'INSERT', NULL, @kraj_NEW)
+GO
+
+
+SELECT * FROM komunikatywyzwalaczy
+GO
+
+
+DROP TRIGGER PO_WSTAW_KRAJ
+GO
+IF OBJECT_ID ('PO_USUN_KRAJ','TR') IS NOT NULL 
+begin
+print'triger PO_USUN_KRAJ istnieje'
+END
+ELSE
+BEGIN 
+print 'tworze trigger zmiana statusu'
+END
+GO
+CREATE TRIGGER PO_USUN_KRAJ
+ON KRAJ 
+AFTER DELETE
+AS 
+IF UPDATE(KRAJPROD)
+DECLARE @kraj_OLD VARCHAR (15)
+SELECT @kraj_OLD=krajprod
+FROM deleted 
+INSERT INTO komunikatywyzwalaczy (TABELA, KOLUMNA, OPERACJA, STARA_WART, NOWA_WART)
+VALUES ('KRAJ', 'KRAJPROD', 'DELETE', @kraj_OLD, NULL)
+GO
+
+
+
+SELECT * FROM komunikatywyzwalaczy
+GO
+
+
+
+DROP TRIGGER PO_USUN_KRAJ
+GO
+
+
+IF OBJECT_ID ('tr_update_wypo','TR') IS NOT NULL 
+begin
+print'triger tr_update_wypo istnieje'
+END
+ELSE
+BEGIN 
+print 'tworze trigger zmiana statusu'
+END
+GO
+CREATE TRIGGER tr_update_wypo
+ON WYPO
+AFTER UPDATE 
+AS 
+DECLARE @idklienta int, 
+@idkasety INT,
+@dataw SMALLDATETIME, 
+@dataz_OLD SMALLDATETIME,
+@dataz_NEW SMALLDATETIME,
+@cenak DECIMAL(6,2)
+IF UPDATE(dataz)
+BEGIN
+SELECT @idklienta=idklienta,
+@idkasety=idkasety,
+@dataw=dataw,
+@dataz_OLD=dataz
+FROM deleted
+SELECT @dataz_NEW=dataz
+FROM inserted
+SELECT @cenak
+FROM KASETY JOIN FILMY ON kasety.idfilmu=filmy.idfilmu
+WHERE idkasety=@idkasety
+UPDATE wypo 
+set kwota=DATEDIFF(day, @dataw, @dataz_NEW)*@cenak
+where idklienta=@idklienta AND
+idkasety=@idkasety AND
+dataw=@dataw
+END
+GO
+
+SELECT * FROM WYPO
+GO
+
+
+DROP TRIGGER tr_update_wypo
+GO
+
+CREATE FUNCTION OSOBY_IM(@idkli int)
+RETURNS NVARCHAR(70)
+AS
+BEGIN
+DECLARE @PelnaNazwa NCHAR(70)
+SELECT @PelnaNazwa = nazwisko + '-' + imie+''+ adres
+FROM Klienci 
+WHERE idklienta = @idkli
+RETURN (@PelnaNazwa)
+END
+GO
+
+DROP FUNCTION OSOBY_IM
+GO
+
+SELECT Z504_09.OSOBY_IM(2)
+GO
+
+IF OBJECT_ID ('KASETY1','IF') IS NOT NULL
+BEGIN
+PRINT 'funkcja KASETY1 juz statusu istnieje'
+DROP FUNCTION KASETY1
+PRINT 'jesdzcze raz twoorze funkcje'
+END
+GO
+CREATE FUNCTION KASETY1(@TYP INT)
+RETURNS TABLE
+AS 
+RETURN (SELECT idkasety,tytul 
+FROM KASETY JOIN FILMY on KASETY.IDFILMU = FILMY.IDFILMU
+where FILMY.IDFILMU=@TYP)
+GO
+
+SELECT * FROM KASETY1(4)
+GO
+
+DROP FUNCTION KASETY1
+
+---2.  
+
+
+
+
+IF OBJECT_ID ('ZMIANASTATUSU','TR') IS NOT NULL 
+begin
+print'triger zmiana juz statusu istnieje'
+END
+ELSE
+BEGIN 
+print 'tworze trigger zmiana statusu'
+END
+GO
+
+CREATE TRIGGER ZMIANASTATUSU
+ON KASETY
+AFTER UPDATE
+AS
+IF UPDATE([STATUS])
+DECLARE @status_old CHAR(1), @status_new CHAR(1)
+SELECT @status_old=[status]
+FROM deleted
+select @status_new=[status]
+from inserted
+INSERT into komunikatywyzwalaczy (TABELA, KOLUMNA, OPERACJA, STARA_WART, NOWA_WART)
+VALUES ('KASETY', 'STATUS', 'UPDATE', @status_old, @status_new)
+GO
+
+DROP TRIGGER ZMIANASTATUSU
+GO
+
+SELECT * from komunikatywyzwalaczy
+
+
+
+IF OBJECT_ID ('F1','FN') IS NOT NULL
+BEGIN
+PRINT 'funkcja f1 juz statusu istnieje'
+DROP FUNCTION F1
+PRINT 'jesdzcze raz twoorze funkcje'
+END
+GO
+CREATE FUNCTION F1 (@tytulf CHAR(30))
+RETURNS int
+AS 
+begin
+declare @tytulff CHAR(30)
+SELECT @tytulff = COUNT(KRAJPROD) 
+FROM FILMY F JOIN FILKRA FI ON F.IDFILMU=FI.IDFILMU JOIN KRAJ K ON K.IDKRAJ=FI.IDKRAJ
+where F.TYTUL=@tytulf
+RETURN (@tytulff) 
+END
+GO
+
+
+SELECT COUNT(KRAJPROD) 
+FROM FILMY F JOIN FILKRA FI ON F.IDFILMU=FI.IDFILMU JOIN KRAJ K ON K.IDKRAJ=FI.IDKRAJ
+where F.TYTUL = 'killer'
+
+SELECT Z504_09.F1('killer')
+
+DROP FUNCTION F1
+ 
+
+IF OBJECT_ID ('F2','FN') IS NOT NULL
+BEGIN
+PRINT 'funkcja f2 juz statusu istnieje'
+DROP FUNCTION F2
+PRINT 'jesdzcze raz twoorze funkcje'
+END
+GO
+CREATE FUNCTION F2 (@idkase INT)
+RETURNS CHAR(30)
+AS 
+BEGIN
+DECLARE @tytt CHAR(30)
+SELECT @tytt = TYTUL
+FROM FILMY F JOIN KASETY K ON F.IDFILMU=K.IDKASETY
+WHERE K.IDKASETY=@idkase
+RETURN (@tytt)
+END
+GO
+
+SELECT Z504_09.F2(2)
+go
+
+
+DROP FUNCTION F2 
+GO
+
+IF OBJECT_ID ('F3','IF') IS NOT NULL
+BEGIN
+PRINT 'funkcja f3 juz statusu istnieje'
+DROP FUNCTION F3
+PRINT 'jesdzcze raz twoorze funkcje'
+END
+GO
+CREATE FUNCTION F3(@nazwiskoo CHAR (30))
+RETURNS TABLE
+AS
+RETURN (SELECT TYTUL, NAZWISKO
+FROM FILMY F JOIN REZYSER R ON F.IDREZYSER=R.IDREZYSER
+WHERE NAZWISKO = @nazwiskoo)
+GO
+
+DROP FUNCTION F3
+
+
+
+--ok
+select * from [Z504_09].[F3] ('ktos')
+
+
+SELECT TYTUL
+FROM FILMY F JOIN REZYSER R ON F.IDREZYSER=R.IDREZYSER
+WHERE NAZWISKO = 'ktos'
+GO
+
+IF OBJECT_ID ('F4','IF') IS NOT NULL
+BEGIN
+PRINT 'funkcja f1 juz statusu istnieje'
+DROP FUNCTION F4
+PRINT 'jesdzcze raz twoorze funkcje'
+END
+GO
+CREATE FUNCTION F4 (@nazwisk CHAR(30), @imie CHAR(30) )
+RETURNS TABLE 
+AS
+RETURN (SELECT W.IDKASETY, TYTUL, DATAW, DATAZ
+FROM KLIENCI K JOIN WYPO W ON K.IDKLIENTA=W.IDKLIENTA JOIN KASETY KK ON W.IDKASETY=KK.IDKASETY JOIN FILMY F ON KK.IDFILMU=F.IDFILMU
+WHERE NAZWISKO = @nazwisk AND IMIE = @imie)
+GO
+
+
+DROP FUNCTION F4
+GO
+
+select * from  [Z504_09].[F4] ('galant', 'damian')
+GO
+
+
+
+
+IF OBJECT_ID ('F5','FN') IS NOT NULL
+BEGIN
+PRINT 'funkcja f5 juz statusu istnieje'
+DROP FUNCTION F1
+PRINT 'jesdzcze raz twoorze funkcje'
+END
+GO
+CREATE FUNCTION F5 (@tytullf CHAR(30))
+RETURNS int
+AS 
+begin
+declare @tytullff CHAR(30)
+SELECT @tytullff = COUNT(NAZWISKO) 
+FROM REZYSER R JOIN FILMY F ON R.IDREZYSER=F.IDREZYSER JOIN KASETY K ON F.IDFILMU=K.IDFILMU
+where R.NAZWISKO=@tytullf
+RETURN (@tytullff) 
+END
+GO
+
+SELECT Z504_09.F5('pan')
+
+
+DROP FUNCTION F5
+
+
+IF OBJECT_ID ('F6','IF') IS NOT NULL
+BEGIN
+PRINT 'funkcja f6 juz statusu istnieje'
+DROP FUNCTION F3
+PRINT 'jesdzcze raz twoorze funkcje'
+END
+GO
+CREATE FUNCTION F6(@nazwiskooo CHAR (30))
+RETURNS TABLE
+AS
+RETURN (SELECT TYTUL, CENA
+FROM FILMY F JOIN REZYSER R ON F.IDREZYSER=R.IDREZYSER  
+WHERE NAZWISKO = @nazwiskooo)
+GO
+
+DROP FUNCTION F6
+GO
+
+
+--ok
+select * from [Z504_09].[F6] ('ktos')
+

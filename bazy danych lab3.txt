@@ -1,0 +1,71 @@
+create table Miasta(
+IDMiasta int primary key,
+Nazwa char(30))
+go
+
+create table Osoby(
+IDOsoby int primary key,
+Imie char(20),
+Nazwisko char (20),
+IDMiasta int)
+go
+
+alter table Osoby add 
+constraint [FK_Osoby_Miasta] foreign key
+(IDMiasta) references Miasta(IDMiasta)
+go
+
+ 2
+
+create table Miasta1(
+IDMiasta int primary key,
+Nazwa char(30))
+go
+
+create table Osoby1(
+IDOsoby int primary key,
+Imie char(20),
+Nazwisko char (20),
+IDMiasta int references Miasta1(IDMiasta) )
+go
+
+  3
+
+create table Miasta2(
+IDMiasta int primary key,
+Nazwa char(30))
+go
+
+create table Osoby2(
+IDOsoby int primary key,
+Imie char(20),
+Nazwisko char (20),
+IDMiasta int 
+constraint [FK_Osoby_Miasta2] foreign key(IDMiasta) references Miasta2(IDMiasta) )
+go
+
+
+select * from dbo.sysobjects
+
+select * from INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+
+
+
+
+if  exists (select * from dbo.sysobjects  where id = object_id(N'Miasta'))
+begin
+print 'Tabela mista istenieje w db kasety'
+end
+else 
+begin 
+print 'Tworze mista  w db kasety'
+create table Miasta(
+IDMiasta int primary key,
+Nazwa char(30))
+end 
+go
+
+
+
+
+

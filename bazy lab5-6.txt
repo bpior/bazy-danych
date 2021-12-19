@@ -1,0 +1,105 @@
+select * from OpisZam
+
+select SUM([Iloœæ]*[CenaJednostkowa]) from OpisZam
+where IDzamówienia=10248
+
+--funkcja
+
+CREATE FUNCTION Wartosc_Z(@nrz int) RETURNS FLOAT
+AS
+BEGIN
+DECLARE @Wartosc FLOAT 
+SET @Wartosc=(select SUM([Iloœæ]*[CenaJednostkowa]) from OpisZam
+where IDzamówienia=@nrz)
+RETURN @Wartosc
+END
+
+--wywolanie funkcji
+
+select [Z502_09].[Wartosc_Z](10248)
+
+--Procedura
+
+CREATE PROCEDURE P_Wartosc_Z @nrz int, @Wartosc float OUT
+AS
+BEGIN
+SET @Wartosc=(select SUM([Iloœæ]*[CenaJednostkowa]) from OpisZam
+where IDzamówienia=@nrz)
+END
+
+
+--wywolanie procedury
+
+declare @W float
+exec P_Wartosc_Z 10248, @W OUTPUT
+PRINT @W
+
+--wywolanie funkcji 2
+
+declare @W float
+Set @W=[Z502_09].[Wartosc_Z](10248)
+Print @W
+
+--oblicz ilosc klientów w firmie
+
+select count(*) from Klienci
+
+CREATE FUNCTION Ilosc_k() RETURNS int
+AS
+BEGIN
+DECLARE @Wartosc int
+SET @Wartosc=(select count(*) from Klienci)
+RETURN @Wartosc
+END
+--
+
+select [Z502_09].[Ilosc_k]()
+
+
+--
+CREATE PROCEDURE Ilosc_k1 @Wartosc float OUT
+AS
+BEGIN
+SET @Wartosc=(select count(*) from Klienci)
+END
+
+declare @W float
+exec Ilosc_k1 @W OUTPUT
+PRINT @W
+
+--przyk³ad procedury z dynamiczn¹ informacj¹ o b³êdzie
+
+create procedure PodajNazwisko @nrp int, @Wynik varchar(20) out
+as
+begin
+if NOT EXISTS(select * from Pracownicy where IDPracownika=@nrp)
+begin
+declare @min int, @max int
+select @min=min(IDPracownika) from Pracownicy
+select @max=max(IDPracownika) from Pracownicy
+RAISERROR('IDPracownika to liczba pomiêdzy %d a %d', 15,1,@min,@max)
+end 
+select @Wynik=Nazwisko from Pracownicy where IDPracownika=@nrp
+end
+
+--wywolanie
+
+declare @W varchar(20)
+exec PodajNazwisko 4, @W OUTPUT
+PRINT @W
+
+
+CREATE FUNCTION F_PodajNazwisko(@nrp int) RETURNS varchar(20)
+AS
+BEGIN
+if NOT EXISTS(select * from Pracownicy where IDPracownika=@nrp)
+begin
+declare @min int, @max int
+select @min=min(IDPracownika) from Pracownicy
+select @max=max(IDPracownika) from Pracownicy
+--RAISERROR('IDPracownika to liczba pomiêdzy %d a %d', 15,1,@min,@max)
+end 
+Return (select Nazwisko from Pracownicy where IDPracownika=@nrp)
+END
+
+select [Z502_09].[F_PodajNazwisko](4)
